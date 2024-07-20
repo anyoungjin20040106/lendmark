@@ -12,7 +12,7 @@ params ={'serviceKey' : os.getenv("publicdata"), 'pageNo' : '1', 'numOfRows' : '
 
 app=FastAPI()
 @app.post("/getInfo")
-async def getInfo(x:str=Form(),y:str=Form()):
+async def getInfo(x:str=Form(...),y:str=Form(...)):
     x=float(x)
     y=float(y)
     try:
