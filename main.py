@@ -1,38 +1,28 @@
-import os
-import folium.map
+import folium
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
-from fastapi import FastAPI,Form,HTTPException,Query
+from fastapi import FastAPI,Form,Query
 from fastapi.responses import HTMLResponse
-import httpx
 import numpy as np
 import folium
-url = 'http://api.data.go.kr/openapi/tn_pubr_public_trrsrt_api'
-params ={'serviceKey' : os.getenv("publicdata"), 'pageNo' : '1', 'numOfRows' : '10000', 'type' : 'json'}
-
+df=pd.read_csv('data.csv')
 app=FastAPI()
 @app.post("/getInfo")
 async def getInfo(x:str=Form(...),y:str=Form(...)):
-    x=float(x)
-    y=float(y)
-    try:
-        async with httpx.AsyncClient() as hc:
-            response=await hc.get(url,params=params)
-        data=response.json()['response']['body']['items']
-        df=pd.DataFrame(data)[['trrsrtNm','latitude','longitude','trrsrtIntrcn','phoneNumber']]
-        df[['latitude','longitude']]=df[['latitude','longitude']].astype("float64")
-        model=KNeighborsClassifier()
-        model.fit(df[['latitude','longitude']],df[['trrsrtNm','trrsrtIntrcn','phoneNumber']])
-        result=model.predict([[y,x]])
-        json=dict(zip(['name','des','ph'],result[0]))
-        r=df[df['trrsrtNm']==json['name']]
-        json['sx']=x
-        json['sy']=y
-        json['ex']=r['longitude'].values[0]
-        json['ey']=r['latitude'].values[0]
-        return json
-    except Exception as e:
-        raise HTTPException(status_code=429, detail=f"에러 : {e}")
+     x=float(x)
+     y=float(y)
+     model=KNeighborsClassifier()
+     model.fit(df[['경도','위도']].values,df[['시설명','카테고리1','카테고리2']].values)
+     result=model.predict([[x,y]])[0]
+     data=dict(zip(['name'],result))
+     r=df[df['시설명']==data['name']]
+     data['sx']=x
+     data['sy']=y
+     data['c1']=r['카테고리1'].values[0]
+     data['c2']=r['카테고리2'].values[0]
+     data['ey']=r['위도'].values[0]
+     data['ex']=r['경도'].values[0]
+     return data
 @app.get("/map")
 async def getInfo(name:str=Query(""),ex:str=Query(""),ey:str=Query(""),sx:str=Query(""),sy:str=Query("")):
     if name=="":
