@@ -1,43 +1,69 @@
-import folium
 import pandas as pd
-from sklearn.neighbors import KNeighborsClassifier
-from fastapi import FastAPI,Form,Query
+from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse
-import numpy as np
+from fastapi.templating import Jinja2Templates
 import folium
-df=pd.read_csv('data.csv')
-app=FastAPI()
-@app.post("/getInfo")
-async def getInfo(x:str=Form(...),y:str=Form(...)):
-     x=float(x)
-     y=float(y)
-     model=KNeighborsClassifier()
-     model.fit(df[['경도','위도']].values,df[['시설명','카테고리1','카테고리2']].values)
-     result=model.predict([[x,y]])[0]
-     data=dict(zip(['name'],result))
-     r=df[df['시설명']==data['name']]
-     data['sx']=x
-     data['sy']=y
-     data['c1']=r['카테고리1'].values[0]
-     data['c2']=r['카테고리2'].values[0]
-     data['ey']=r['위도'].values[0]
-     data['ex']=r['경도'].values[0]
-     return data
-@app.get("/map")
-async def getInfo(name:str=Query(""),ex:str=Query(""),ey:str=Query(""),sx:str=Query(""),sy:str=Query("")):
-    if name=="":
+import geopy.distance
+
+df = pd.read_csv('data.csv')
+app = FastAPI()
+df.fillna('https://maps.gstatic.com/tactile/pane/default_geocode-2x.png', inplace=True)
+templates = Jinja2Templates(directory="template")
+
+@app.get("/map", response_class=HTMLResponse)
+async def getInfo(x: str = Query(""), y: str = Query(""), kind: str = Query(""), distance: str = Query("20")):
+    if x == "":
         return HTMLResponse("<script>alert('비정상적인 접근');window.history.back();</script>")
-    ex=float(ex)
-    ey=float(ey)
-    sx=float(sx)
-    sy=float(sy)
-    m=folium.Map(location=[get_mid_point(sy,ey),get_mid_point(sx,ex)])
-    folium.Marker([sy,sx],tooltip="현재위치",icon=folium.Icon(color="red")).add_to(m)
-    folium.Marker([ey,ex],tooltip=name).add_to(m)
-    return HTMLResponse(m._repr_html_())
-@app.get("/")
-async def index():
-        return HTMLResponse("<script>alert('비정상적인 접근');window.history.back();</script>")
-def get_mid_point(s,e):
-    mid=(np.abs(s-e))/2
-    return mid+(s if s<e else e)
+
+    kind = "" if kind == "모두보기" else kind
+    x = float(x)
+    y = float(y)
+    distance = float(distance)
+    rf = df[df['종류'].str.contains(kind)].copy()
+    rf['거리'] = rf.apply(lambda d: geopy.distance.distance((y, x), (d['위도'], d['경도'])).km, axis=1)
+    rf = rf[rf['거리'] <= distance]
+
+    if rf.empty:
+        return HTMLResponse("근처에 관광지가 없습니다")
+
+    near = rf['거리'].min()
+    m = folium.Map(location=[y, x], zoom_start=13)
+    folium.Marker(
+        [y, x],
+        tooltip="현재위치",
+        icon=folium.Icon(color="blue")
+    ).add_to(m)
+    folium.Circle([y, x],radius=distance*1000).add_to(m)
+    # folium.CircleMarker([y, x],radius=distance*100,fill="yellow").add_to(m)
+    
+    for _, row in rf.iterrows():
+        folium.Marker(
+            [row['위도'], row['경도']],
+            popup=f'''
+            <form action="/content" method="dialog">
+                <button type="submit"  onclick="document.getElementById('popup').showModal()"  style="background-color: transparent; border: none;">
+                    <img src="{row['이미지주소']}" width="100" height="100">
+                </button>
+            </form>
+    <dialog id="popup">
+        <form method="dialog">
+            <button style="background-color: red;float: right; width: 50px;height: 50px;display: flex;align-items: center;justify-content: center;"><h2>X</h2></button>
+        </form>
+        <h1 style="font-weight: 700;">{row['이름']}</h1>
+        <img src="{row['이미지주소']}"><br>
+        <p>거리 : {row['거리']}km</p><br>
+    </dialog>''',
+            tooltip=row['이름'],
+            icon=folium.Icon(color="red", icon="star" if row['거리'] == near else "circle")
+        ).add_to(m)
+    code=m._repr_html_().replace('<span style="color:#565656">Make this Notebook Trusted to load map: File -> Trust Notebook</span>',"")
+    return code
+    return HTMLResponse(content=code, status_code=200)
+
+@app.post("/content", response_class=HTMLResponse)
+async def content(request: Request, name: str = Form(...), content: str = Form(...), img: str = Form(...)):
+    return templates.TemplateResponse("content.html", {"request": request, "name": name, "content": content, "img": img})
+
+@app.get("/kind")
+async def kind():
+    return {'data': ['모두보기'] + list(df['종류'].unique())}
