@@ -1,5 +1,5 @@
 import pandas as pd
-from fastapi import FastAPI, Form, Query, Request
+from fastapi import FastAPI, Form,Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import folium
@@ -10,8 +10,15 @@ app = FastAPI()
 df.fillna('https://maps.gstatic.com/tactile/pane/default_geocode-2x.png', inplace=True)
 templates = Jinja2Templates(directory="template")
 
-@app.get("/map", response_class=HTMLResponse)
-async def getInfo(x: str = Query(""), y: str = Query(""), kind: str = Query(""), distance: str = Query("20")):
+
+@app.get("/")
+async def kind(request:Request):
+    result=""
+    for i in df['종류'].unique():
+        result+=f'<option value="{i}">{i}</option>'
+    return templates.TemplateResponse(request,'index.html',{'kind':result})
+@app.post("/map", response_class=HTMLResponse)
+async def getInfo(x: float = Form(...), y: float = Form(...), kind: str = Form(""), distance: int = Form(...)):
     if x == "":
         return HTMLResponse("<script>alert('비정상적인 접근');window.history.back();</script>")
 
@@ -24,7 +31,7 @@ async def getInfo(x: str = Query(""), y: str = Query(""), kind: str = Query(""),
     rf = rf[rf['거리'] <= distance]
 
     if rf.empty:
-        return HTMLResponse("근처에 관광지가 없습니다")
+        return HTMLResponse("""근처에 관광지가 없습니다<br><button onclick="window.location.href='/'">다시해보기</button><br>""")
 
     near = rf['거리'].min()
     m = folium.Map(location=[y, x], zoom_start=13)
@@ -34,8 +41,6 @@ async def getInfo(x: str = Query(""), y: str = Query(""), kind: str = Query(""),
         icon=folium.Icon(color="blue")
     ).add_to(m)
     folium.Circle([y, x],radius=distance*1000).add_to(m)
-    # folium.CircleMarker([y, x],radius=distance*100,fill="yellow").add_to(m)
-    
     for _, row in rf.iterrows():
         folium.Marker(
             [row['위도'], row['경도']],
@@ -56,14 +61,9 @@ async def getInfo(x: str = Query(""), y: str = Query(""), kind: str = Query(""),
             tooltip=row['이름'],
             icon=folium.Icon(color="red", icon="star" if row['거리'] == near else "circle")
         ).add_to(m)
+    m.get_root().html.add_child(folium.Element("""<button onclick="window.location.href='/'">다시해보기</button><br>"""))
     code=m._repr_html_().replace('<span style="color:#565656">Make this Notebook Trusted to load map: File -> Trust Notebook</span>',"")
     return code
-    return HTMLResponse(content=code, status_code=200)
-
-@app.post("/content", response_class=HTMLResponse)
-async def content(request: Request, name: str = Form(...), content: str = Form(...), img: str = Form(...)):
-    return templates.TemplateResponse("content.html", {"request": request, "name": name, "content": content, "img": img})
-
-@app.get("/kind")
-async def kind():
-    return {'data': ['모두보기'] + list(df['종류'].unique())}
+if __name__=="main":
+    import uvicorn
+    uvicorn.run("main:app",reload=True)
