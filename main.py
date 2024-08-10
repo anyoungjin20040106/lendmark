@@ -86,15 +86,7 @@ async def lendmark(kind:str=Form(...)):
         "data":
         list(
             map(lambda x: ", ".join(map(str, x)), tf[['이름', '위도',
-                                                      '경도']].values))
-    }
-@app.post("/getInfo")
-async def getInfo(name:str=Form(...)):
-    row=df[df['이름']==name][['이름','이미지주소','설명']].values[0]
-    return {
-        'name':row[0],
-        'img':row[1],
-        'content':row[2]
+                                                      '경도','이미지주소','설명']].values))
     }
 @app.get("/kind")
 async def kind():
