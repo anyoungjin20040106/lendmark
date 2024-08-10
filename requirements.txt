@@ -13,7 +13,6 @@ fastapi-cli==0.0.4
 folium==0.17.0
 geographiclib==2.0
 geopy==2.4.1
-googletrans==4.0.0rc1
 gTTS==2.5.2
 h11==0.14.0
 h2==3.2.0
