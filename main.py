@@ -4,11 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 import folium
-import geopy.distance
 
-df = pd.read_csv('data.csv')
+lendmark = pd.read_csv('lendmark.csv')
 app = FastAPI()
-df.fillna('https://maps.gstatic.com/tactile/pane/default_geocode-2x.png',
+lendmark.fillna('https://maps.gstatic.com/tactile/pane/default_geocode-2x.png',
           inplace=True)
 templates = Jinja2Templates(directory="template")
 
@@ -16,7 +15,7 @@ templates = Jinja2Templates(directory="template")
 @app.get("/")
 async def kind(request: Request):
     result = ""
-    for i in df['종류'].unique():
+    for i in lendmark['종류'].unique():
         result += f'<option value="{i}">{i}</option>'
     return templates.TemplateResponse(request, 'index.html', {'kind': result})
 
@@ -34,7 +33,7 @@ async def getInfo(x: float = Form(...),
     x = float(x)
     y = float(y)
     distance = float(distance)
-    rf = df[df['종류'].str.contains(kind)].copy()
+    rf = lendmark[lendmark['종류'].str.contains(kind)].copy()
     rf['거리'] = rf.apply(lambda d: geopy.distance.distance(
         (y, x), (d['위도'], d['경도'])).km,
                         axis=1)
@@ -77,19 +76,37 @@ async def getInfo(x: float = Form(...),
 
 
 @app.post("/lendmark")
-async def lendmark(kind:str=Form(...)):
-    if kind == "모두보기":
-        tf=df.copy()
-    else:
-        tf=df[df['종류']==kind]
+async def lendmark(kind: str = Form(...)):
+    tf = lendmark[lendmark['종류'] == kind] if kind != "모두보기" else lendmark.copy()
     return {
-        "data":
-        list(
-            map(lambda x: ", ".join(map(str, x)), tf[['이름', '위도',
-                                                      '경도','이미지주소','설명']].values))
+        'data': [{
+            "name": row[0],
+            "lat": row[1],
+            "lon": row[2],
+            "img": row[4],
+            "content": row[5],
+        } for row in tf.values]
     }
+
+
+@app.get("/lendmark")
+async def lendmark():
+    return {
+        'data': [{
+            "name": row[0],
+            "lat": row[1],
+            "lon": row[2],
+            "img": row[4],
+            "content": row[5],
+        } for row in lendmark.values]
+    }
+
+
 @app.get("/kind")
 async def kind():
-    return {
-        'data':['모두보기']+list(df['종류'].unique())
-    }
+    return {'data': ['모두보기'] + list(lendmark['종류'].unique())}
+
+@app.post("/content")
+async def content(title:str=Form(...)):
+    item=pd.read_csv('item.csv')
+    return item[item['이름']==title]['설명'].values[0]
