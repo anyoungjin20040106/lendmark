@@ -1,0 +1,5 @@
+장소명,관광지명,이미지주소,위쪽장소,아랫쪽장소,왼쪽장소,오른쪽장소,시작점
+안내데스크,실학박물관,https://silhak.ggcf.kr/storage/upload/2023/04/03/P2g4tsEF9jBUjTQUjEAN9EjPLda6lkicj0BBTsse.jpg,로비,,,,True
+로비,실학박물관,https://silhak.ggcf.kr/storage/upload/2023/04/03/plXvyhDml2WAa08pqHH26Ni8wjmgzfytfOb5Iari.jpg,,안내데스크,어린이휴게실,기획전시실,False
+기획전시실,실학박물관,https://silhak.ggcf.kr/storage/upload/2023/04/03/Lv7zPDqS8vHLZPWUd1yZpwAJ2vVEyumcSlM1G2cr.jpg,,,로비,,False
+어린이휴게실,실학박물관,https://silhak.ggcf.kr/storage/upload/2023/04/03/B6dniDyXmqmTTAB6U6FpekjUAttTtQZZS2TqtUfa.jpg,,,,로비,False
