@@ -37,28 +37,23 @@ async def map(lat:str=Form(...),lon:str=Form(...),km:str=Form(4)):
 @app.get("/kind")
 async def kind():
     return {'data': ['모두보기'] + list(lendmarkdf['종류'].unique())}
+def placejson(rf):
+    return {
+        'name': rf['장소명'].values[0] if not pd.isna(rf['장소명'].values[0]) else None,
+        'img': rf['이미지주소'].values[0] if not pd.isna(rf['이미지주소'].values[0]) else None,
+        'top': rf['위쪽장소'].values[0] if not pd.isna(rf['위쪽장소'].values[0]) else None,
+        'bottom': rf['아랫쪽장소'].values[0] if not pd.isna(rf['아랫쪽장소'].values[0]) else None,
+        'left': rf['왼쪽장소'].values[0] if not pd.isna(rf['왼쪽장소'].values[0]) else None,
+        'right': rf['오른쪽장소'].values[0] if not pd.isna(rf['오른쪽장소'].values[0]) else None,
+    }
 @app.post("/place")
 async def place(lendmark:str=Form(...)):
     rf=navi[navi['시작점']&(navi['관광지명']==lendmark)]
-    return{
-    'name':rf['장소명'].values[0],
-    'img':rf['이미지주소'].values[0],
-    'top':rf['위쪽장소'].values[0],
-    'bottom':rf['아랫쪽장소'].values[0],
-    'left':rf['왼쪽장소'].values[0],
-    'right':rf['오른쪽장소'].values[0],
-}
-@app.post("/place")
+    return placejson(rf)
+@app.post("/clicknavi")
 async def place(name:str=Form(...)):
-    rf=navi[navi['시작점']&(navi['장소명']==name)]
-    return{
-    'name':rf['장소명'].values[0],
-    'img':rf['이미지주소'].values[0],
-    'top':rf['위쪽장소'].values[0],
-    'bottom':rf['아랫쪽장소'].values[0],
-    'left':rf['왼쪽장소'].values[0],
-    'right':rf['오른쪽장소'].values[0],
-}
+    rf=navi[navi['장소명']==name]
+    return placejson(rf)
 if __name__=="__main__":
     import uvicorn
     uvicorn.run(app,host="0.0.0.0",port=8569,ssl_keyfile="key.pem",ssl_certfile="cert.pem",reload=True)
