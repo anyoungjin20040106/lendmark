@@ -9,7 +9,7 @@ from geopy import distance
 lendmarkdf = pd.read_csv('lendmark.csv')
 app = FastAPI()
 app.mount("/img",StaticFiles(directory="image"))
-df=pd.read_json('data.json')
+df=pd.read_json('item.json')
 lendmarkdf.fillna(
     'https://maps.gstatic.com/tactile/pane/default_geocode-2x.png',
     inplace=True)
@@ -36,5 +36,5 @@ async def kind():
 @app.post("/item")
 def yujeock(name:str=Form(...)):
     tf=df[df['이름']==name].copy()
-    tf.rename(columns={'이름':'name','설명':'info'},inplace=True)
-    return tf.to_dict('records')
+    tf.rename(columns={'이름':'name','설명':'content'},inplace=True)
+    return tf.to_dict('records')[0]
